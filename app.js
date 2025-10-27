@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playDirection: 1, 
         totalTurns: 0,
         questions: {},
-        currentCard: null // (جديد) لتخزين الكرت المسحوب حالياً
+        currentCard: null 
     };
 
     // --- 3. ربط عناصر الواجهة (DOM Elements) ---
@@ -32,17 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const startGameBtn = document.getElementById('start-game-btn');
     
     const passDeviceTitle = document.getElementById('pass-device-title');
-    const showCardBtn = document.getElementById('show-card-btn'); // (موجود من قبل)
+    const showCardBtn = document.getElementById('show-card-btn');
 
-    // (جديد) شاشة اللعب
     const cardContainer = document.getElementById('card-container');
     const deckCounter = document.getElementById('deck-counter');
-    const endTurnBtn = document.getElementById('end-turn-btn');
+    const endTurnBtn = document.getElementById('end-turn-btn'); // (موجود من قبل)
 
-    // (جديد) شاشة النهاية
-    const playAgainBtn = document.getElementById('play-again-btn');
+    const playAgainBtn = document.getElementById('play-again-btn'); // (موجود من قبل)
 
-    // (جديد) رسائل كروت الأكشن
     const ACTION_MESSAGES = {
         'skip': "تخطي الدور! اللاعب التالي يفقد دوره.",
         'reverse': "عكس الاتجاه! اتجاه اللعب ينعكس الآن.",
@@ -96,25 +93,41 @@ document.addEventListener('DOMContentLoaded', () => {
     startGameBtn.addEventListener('click', () => {
         const nameInputs = document.querySelectorAll('.player-name-input');
         gameState.playerNames = Array.from(nameInputs).map((input, i) => input.value || `لاعب ${i + 1}`);
-        
-        // إعادة تعيين حالة اللعبة بالكامل
         resetGame();
     });
 
-    // (جديد) (ج) شاشة تمرير الجهاز (Pass Device)
+    // (ج) شاشة تمرير الجهاز (Pass Device)
     showCardBtn.addEventListener('click', () => {
-        // سحب كرت وعرضه
         drawAndDisplayCard();
-        // الانتقال لشاشة اللعب
         showScreen('game');
     });
 
-    // (سنبرمج أزرار "السؤال التالي" و "العب مجدداً" لاحقاً)
+    // (جديد) (د) شاشة اللعب (Game Screen)
+    endTurnBtn.addEventListener('click', () => {
+        // 1. تطبيق تأثير الكرت (مثل تخطي اللاعب التالي)
+        applyCardAction(gameState.currentCard);
+
+        // 2. حساب اللاعب التالي
+        const playerCount = gameState.playerNames.length;
+        // (نضيف playerCount لضمان أن الناتج موجب دائماً قبل باقي القسمة)
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
+
+        // 3. تحديث شاشة تمرير الجهاز للاعب التالي
+        passDeviceTitle.textContent = `الدور على: ${gameState.playerNames[gameState.currentPlayerIndex]}`;
+        showScreen('passDevice');
+    });
+
+    // (جديد) (هـ) شاشة نهاية اللعبة (Game Over)
+    playAgainBtn.addEventListener('click', () => {
+        // إعادة تعيين كل شيء والعودة لشاشة الإعداد
+        gameState.playerCount = 2; // إعادة تعيين لافتراضي
+        playerCountDisplay.textContent = '2';
+        showScreen('setup');
+    });
 
 
     // --- 6. منطق اللعبة الأساسي ---
 
-    /** (جديد) إعادة تعيين وبدء اللعبة */
     function resetGame() {
         gameState.currentPlayerIndex = 0;
         gameState.playDirection = 1;
@@ -128,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('passDevice');
     }
 
-    /** جلب الأسئلة من ملف JSON */
     async function fetchQuestions() {
         try {
             const response = await fetch('assets/data/questions.json');
@@ -143,11 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /** بناء كومة الكروت (108 كرت) */
     function buildDeck() {
         gameState.deck = [];
         const colors = ['red', 'blue', 'green', 'yellow'];
-        const values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
         const actions = ['skip', 'reverse', 'draw2'];
         const wilds = ['wild', 'bomb'];
 
@@ -168,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /** خلط الكروت عشوائياً */
     function shuffleDeck() {
         for (let i = gameState.deck.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -176,34 +185,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /** (جديد) سحب كرت وعرضه */
     function drawAndDisplayCard() {
-        // 1. التحقق إذا انتهت الكروت
         if (gameState.deck.length === 0) {
             showScreen('gameOver');
             return;
         }
 
-        // 2. سحب كرت
         const card = gameState.deck.pop();
-        gameState.currentCard = card; // تخزين الكرت الحالي
+        gameState.currentCard = card; 
         gameState.totalTurns++;
 
-        // 3. بناء عنصر HTML للكرت
         const cardElement = createCardElement(card);
         
-        // 4. عرض الكرت في الحاوية
-        cardContainer.innerHTML = ''; // مسح الكرت القديم
+        cardContainer.innerHTML = ''; 
         cardContainer.appendChild(cardElement);
 
-        // 5. تحديث عداد الكروت
         deckCounter.textContent = `الكرت ${gameState.totalTurns} / 108`;
     }
 
-    /** (جديد) بناء عنصر HTML للكرت */
+    /** (جديد) تطبيق تأثيرات الكروت */
+    function applyCardAction(card) {
+        const playerCount = gameState.playerNames.length;
+
+        if (card.value === 'reverse') {
+            gameState.playDirection *= -1; // عكس الاتجاه
+        
+        } else if (card.value === 'skip') {
+            // تخطي اللاعب التالي (نضيف 1 للدور)
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
+        
+        } else if (card.value === 'draw2') {
+            // تخطي اللاعب التالي (نفس تأثير Skip في لعبتنا)
+            // (يمكن تعديلها لاحقاً لجعله يسحب 2)
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
+        
+        } else if (card.value === 'bomb') {
+            // كرت القنبلة (+4)
+            // (حالياً لا نفعل شيئاً سوى إظهار الرسالة، يمكن تعديلها لاحقاً)
+            // (لأن اللاعب الحالي هو من يختار، لا نحتاج لتخطي أدوار)
+        }
+    }
+
     function createCardElement(card) {
         const cardDiv = document.createElement('div');
-        // (ملاحظة: سنصمم هذه الكلاسات في style.css لاحقاً)
         cardDiv.className = `neo-card card-${card.color} card-type-${card.type}`;
         
         let question = '';
@@ -211,20 +235,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let logoSrc = 'assets/images/logo.png'; // (اسم افتراضي للشعار)
 
         if (card.type === 'number') {
-            // كرت رقم (سوالف)
-            const questionBank = gameState.questions[card.color] || gameState.questions['green']; // (الأخضر احتياطي)
+            const questionBank = gameState.questions[card.color] || gameState.questions['green'];
             question = questionBank[Math.floor(Math.random() * questionBank.length)];
-            // (سنحتاج صوراً للأرقام، لكن للتبسيط سنستخدم الأيقونات)
-            // (حالياً نترك الأيقونة فارغة لكرت الرقم)
-            cornerIconSrc = ''; // (مثل: `assets/images/num-${card.value}.png`)
+            
+            // (للبساطة، لن نعرض أيقونات للأرقام، سنعتمد على الخلفية فقط)
+            cornerIconSrc = ''; 
         
         } else if (card.type === 'action') {
-            // كرت أكشن
             question = ACTION_MESSAGES[card.value];
             cornerIconSrc = `assets/images/icon-${card.value}.png`; // (مثل: icon-skip.png)
         
         } else if (card.type === 'wild') {
-            // كرت وايلد أو قنبلة
             question = ACTION_MESSAGES[card.value];
             cornerIconSrc = `assets/images/icon-${card.value}.png`; // (مثل: icon-bomb.png)
         }
@@ -234,15 +255,12 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="card-corner top-left">
                 ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
             </div>
-
             <div class="card-content-box pixel-speech-box">
                 <p class="card-question">${question}</p>
             </div>
-
             <div class="card-logo">
                 <img src="${logoSrc}" alt="NEO Sawlif">
             </div>
-
             <div class="card-corner bottom-right">
                 ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
             </div>
