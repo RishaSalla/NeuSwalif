@@ -1,5 +1,4 @@
 // --- 1. الانتظار حتى يتم تحميل الصفحة ---
-// (نضع كل الكود داخل هذا الحدث لضمان أن HTML جاهز)
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. تعريف متغيرات حالة اللعبة ---
@@ -34,20 +33,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerNamesInputsContainer = document.getElementById('player-names-inputs');
     const startGameBtn = document.getElementById('start-game-btn');
     
+    // شاشة تمرير الجهاز (Pass Device)
+    const passDeviceTitle = document.getElementById('pass-device-title');
+    const showCardBtn = document.getElementById('show-card-btn');
+
     // (سنضيف باقي الأزرار لاحقاً)
 
 
     // --- 4. وظيفة التنقل بين الشاشات ---
-    /**
-     * @param {string} screenId (id الشاشة التي نريد إظهارها)
-     */
     function showScreen(screenId) {
-        // إخفاء جميع الشاشات
         for (let id in screens) {
             screens[id].classList.remove('active');
         }
-        
-        // إظهار الشاشة المطلوبة
         if (screens[screenId]) {
             screens[screenId].classList.add('active');
         }
@@ -73,35 +70,112 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     setupNextBtn.addEventListener('click', () => {
-        // إنشاء صناديق إدخال الأسماء بناءً على العدد
         createNameInputs(gameState.playerCount);
-        // الانتقال لشاشة الأسماء
         showScreen('names');
     });
 
     // --- (ب) شاشة الأسماء ---
     
-    /**
-     * @param {number} count (عدد اللاعبين)
-     */
     function createNameInputs(count) {
-        // مسح الصناديق القديمة أولاً
         playerNamesInputsContainer.innerHTML = ''; 
-        
         for (let i = 0; i < count; i++) {
             const input = document.createElement('input');
             input.type = 'text';
             input.placeholder = `اسم اللاعب ${i + 1}`;
-            input.className = 'player-name-input'; // (يمكننا تصميم هذا الكلاس لاحقاً)
+            input.className = 'player-name-input';
             playerNamesInputsContainer.appendChild(input);
         }
     }
 
-    // (زر "إبدأ اللعبة" سنبرمجه في الخطوة التالية بعد جلب الأسئلة)
+    startGameBtn.addEventListener('click', () => {
+        // 1. جمع الأسماء من الصناديق
+        const nameInputs = document.querySelectorAll('.player-name-input');
+        gameState.playerNames = Array.from(nameInputs).map((input, i) => input.value || `لاعب ${i + 1}`);
+        
+        // 2. إعادة تعيين حالة اللعبة والبدء
+        gameState.currentPlayerIndex = 0;
+        gameState.playDirection = 1;
+        gameState.totalTurns = 0;
+        
+        // 3. بناء وخلط الكروت
+        buildDeck();
+        shuffleDeck();
+
+        // 4. إظهار شاشة تمرير الجهاز لأول لاعب
+        passDeviceTitle.textContent = `الدور على: ${gameState.playerNames[0]}`;
+        showScreen('passDevice');
+    });
     
     
-    // --- 6. تشغيل اللعبة (مبدئياً) ---
-    // (لا شيء هنا الآن، فقط التأكد أن شاشة الإعداد ظاهرة)
-    showScreen('setup'); 
+    // --- 6. منطق اللعبة الأساسي ---
+
+    /** (جديد) جلب الأسئلة من ملف JSON */
+    async function fetchQuestions() {
+        try {
+            const response = await fetch('assets/data/questions.json');
+            if (!response.ok) {
+                throw new Error('فشل تحميل ملف الأسئلة!');
+            }
+            gameState.questions = await response.json();
+            console.log("تم تحميل الأسئلة بنجاح:", gameState.questions);
+        } catch (error) {
+            console.error(error);
+            // عرض رسالة خطأ للمستخدم إذا فشل تحميل الأسئلة
+            alert('خطأ فادح: لم يتم تحميل بنك الأسئلة. الرجاء تحديث الصفحة.');
+        }
+    }
+
+    /** (جديد) بناء كومة الكروت (108 كرت) */
+    function buildDeck() {
+        gameState.deck = [];
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        const values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        const actions = ['skip', 'reverse', 'draw2']; // تخطي، عكس، اسحب 2
+        const wilds = ['wild', 'bomb']; // Wild, و Bomb (+4)
+
+        for (const color of colors) {
+            // كرت '0' واحد من كل لون
+            gameState.deck.push({ type: 'number', color: color, value: '0' });
+
+            // كرتين من كل رقم (1-9)
+            for (let i = 1; i <= 9; i++) {
+                gameState.deck.push({ type: 'number', color: color, value: i.toString() });
+                gameState.deck.push({ type: 'number', color: color, value: i.toString() });
+            }
+            
+            // كرتين من كل أكشن
+            for (const action of actions) {
+                gameState.deck.push({ type: 'action', color: color, value: action });
+                gameState.deck.push({ type: 'action', color: color, value: action });
+            }
+        }
+        
+        // 4 كروت وايلد و 4 كروت قنبلة (+4)
+        for (let i = 0; i < 4; i++) {
+            gameState.deck.push({ type: 'wild', color: 'black', value: 'wild' }); // الوايلد العادي
+            gameState.deck.push({ type: 'wild', color: 'black', value: 'bomb' }); // كرت القنبلة
+        }
+        
+        console.log(`تم بناء الكومة: ${gameState.deck.length} كرت`);
+    }
+
+    /** (جديد) خلط الكروت عشوائياً */
+    function shuffleDeck() {
+        // خوارزمية فيشر-ييتس للخلط
+        for (let i = gameState.deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [gameState.deck[i], gameState.deck[j]] = [gameState.deck[j], gameState.deck[i]];
+        }
+        console.log("تم خلط الكروت.");
+    }
+
+    
+    // --- 7. تشغيل اللعبة ---
+    
+    // 1. جلب الأسئلة أولاً
+    fetchQuestions().then(() => {
+        // 2. إظهار شاشة الإعداد بعد التأكد من تحميل الأسئلة
+        showScreen('setup'); 
+    });
 
 });
