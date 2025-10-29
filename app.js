@@ -1,4 +1,4 @@
-// (تم حذف "DOMContentLoaded" من هنا)
+// --- 1. انتظار تحميل الصفحة (تم الحذف - نعتمد على 'defer') ---
 
 // --- 2. تعريف متغيرات حالة اللعبة ---
 let gameState = {
@@ -13,7 +13,6 @@ let gameState = {
 };
 
 // --- 3. ربط عناصر الواجهة (DOM Elements) ---
-// (هذا سيعمل الآن لأن "defer" تضمن تحميل HTML أولاً)
 const screens = {
     setup: document.getElementById('setup-screen'),
     names: document.getElementById('names-screen'),
@@ -36,8 +35,12 @@ const showCardBtn = document.getElementById('show-card-btn');
 const cardContainer = document.getElementById('card-container');
 const deckCounter = document.getElementById('deck-counter');
 const endTurnBtn = document.getElementById('end-turn-btn');
-
 const playAgainBtn = document.getElementById('play-again-btn');
+
+// (جديد) عناصر أنيميشن القلب
+const flipCardBtn = document.getElementById('flip-card-btn');
+const cardFlipper = document.getElementById('card-flipper');
+const cardFront = document.querySelector('.card-front'); // الواجهة الأمامية للكرت
 
 const ACTION_MESSAGES = {
     'skip': "تخطي الدور! اللاعب التالي يفقد دوره.",
@@ -47,11 +50,9 @@ const ACTION_MESSAGES = {
     'bomb': "قنبلة +4! أنت الزعيم! اختر لاعباً ليجاوب على 4 أسئلة!"
 };
 
-
 // --- 4. وظيفة التنقل بين الشاشات ---
 function showScreen(screenId) {
     for (let id in screens) {
-        // التحقق من أن العنصر موجود قبل محاولة إزالة الكلاس
         if (screens[id]) {
             screens[id].classList.remove('active');
         }
@@ -99,12 +100,40 @@ startGameBtn.addEventListener('click', () => {
 });
 
 // (ج) شاشة تمرير الجهاز (Pass Device)
+// (تعديل!) هذا الزر الآن يجهز الكرت ويظهر "ظهر الكرت"
 showCardBtn.addEventListener('click', () => {
+    // 1. سحب الكرت وتجهيزه في الواجهة الأمامية (وهي مخفية)
     drawAndDisplayCard();
+    
+    // 2. التأكد من أن الكرت "غير مقلوب" (يظهر الظهر)
+    if (cardFlipper) {
+        cardFlipper.classList.remove('flipped');
+    }
+    
+    // 3. إظهار زر "اقلب الكرت" وإخفاء زر "السؤال التالي"
+    flipCardBtn.classList.remove('hidden');
+    endTurnBtn.classList.add('hidden');
+    
+    // 4. الانتقال لشاشة اللعب
     showScreen('game');
 });
 
-// (د) شاشة اللعب (Game Screen)
+// (جديد!) (د) زر "اقلب الكرت"
+flipCardBtn.addEventListener('click', () => {
+    // 1. قلب الكرت (الأنيميشن)
+    if (cardFlipper) {
+        cardFlipper.classList.add('flipped');
+    }
+    
+    // 2. إخفاء زر "اقلب الكرت"
+    flipCardBtn.classList.add('hidden');
+    
+    // 3. إظهار زر "السؤال التالي"
+    endTurnBtn.classList.remove('hidden');
+});
+
+
+// (هـ) شاشة اللعب (Game Screen)
 endTurnBtn.addEventListener('click', () => {
     applyCardAction(gameState.currentCard);
 
@@ -115,7 +144,7 @@ endTurnBtn.addEventListener('click', () => {
     showScreen('passDevice');
 });
 
-// (هـ) شاشة نهاية اللعبة (Game Over)
+// (و) شاشة نهاية اللعبة (Game Over)
 playAgainBtn.addEventListener('click', () => {
     gameState.playerCount = 2;
     playerCountDisplay.textContent = '2';
@@ -182,6 +211,7 @@ function shuffleDeck() {
     }
 }
 
+// (تعديل!) هذه الوظيفة الآن تضع الكرت في "الواجهة الأمامية"
 function drawAndDisplayCard() {
     if (gameState.deck.length === 0) {
         showScreen('gameOver');
@@ -194,8 +224,9 @@ function drawAndDisplayCard() {
 
     const cardElement = createCardElement(card);
     
-    cardContainer.innerHTML = ''; 
-    cardContainer.appendChild(cardElement);
+    // مسح الكرت القديم ووضع الجديد في الواجهة الأمامية
+    cardFront.innerHTML = ''; 
+    cardFront.appendChild(cardElement);
 
     deckCounter.textContent = `الكرت ${gameState.totalTurns} / 108`;
 }
@@ -216,7 +247,8 @@ function applyCardAction(card) {
 
 function createCardElement(card) {
     const cardDiv = document.createElement('div');
-    cardDiv.className = `neo-card card-${card.color}`;
+    // (ملاحظة: هذا هو الآن card-front)
+    cardDiv.className = `neo-card card-${card.color}`; 
     
     let question = '';
     let cornerIconSrc = '';
@@ -253,9 +285,5 @@ function createCardElement(card) {
 
 // --- 7. تشغيل اللعبة ---
 fetchQuestions().then(() => {
-    // الآن، بعد تحميل الأسئلة بنجاح،
-    // سنقوم بإظهار الشاشة الأولى.
     showScreen('setup'); 
 });
-
-// (تم حذف القوس }); الأخير)
