@@ -36,10 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cardContainer = document.getElementById('card-container');
     const deckCounter = document.getElementById('deck-counter');
-    const endTurnBtn = document.getElementById('end-turn-btn'); // (موجود من قبل)
+    const endTurnBtn = document.getElementById('end-turn-btn');
 
-    const playAgainBtn = document.getElementById('play-again-btn'); // (موجود من قبل)
+    const playAgainBtn = document.getElementById('play-again-btn');
 
+    // رسائل كروت الأكشن (يمكنك تعديلها)
     const ACTION_MESSAGES = {
         'skip': "تخطي الدور! اللاعب التالي يفقد دوره.",
         'reverse': "عكس الاتجاه! اتجاه اللعب ينعكس الآن.",
@@ -102,25 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('game');
     });
 
-    // (جديد) (د) شاشة اللعب (Game Screen)
+    // (د) شاشة اللعب (Game Screen)
     endTurnBtn.addEventListener('click', () => {
-        // 1. تطبيق تأثير الكرت (مثل تخطي اللاعب التالي)
         applyCardAction(gameState.currentCard);
 
-        // 2. حساب اللاعب التالي
         const playerCount = gameState.playerNames.length;
-        // (نضيف playerCount لضمان أن الناتج موجب دائماً قبل باقي القسمة)
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
 
-        // 3. تحديث شاشة تمرير الجهاز للاعب التالي
         passDeviceTitle.textContent = `الدور على: ${gameState.playerNames[gameState.currentPlayerIndex]}`;
         showScreen('passDevice');
     });
 
-    // (جديد) (هـ) شاشة نهاية اللعبة (Game Over)
+    // (هـ) شاشة نهاية اللعبة (Game Over)
     playAgainBtn.addEventListener('click', () => {
-        // إعادة تعيين كل شيء والعودة لشاشة الإعداد
-        gameState.playerCount = 2; // إعادة تعيين لافتراضي
+        gameState.playerCount = 2;
         playerCountDisplay.textContent = '2';
         showScreen('setup');
     });
@@ -143,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchQuestions() {
         try {
-            const response = await fetch('assets/data/questions.json');
+            // إضافة cache buster لمنع تحميل نسخة قديمة
+            const response = await fetch(`assets/data/questions.json?v=${new Date().getTime()}`);
             if (!response.ok) {
                 throw new Error('فشل تحميل ملف الأسئلة!');
             }
@@ -203,64 +200,57 @@ document.addEventListener('DOMContentLoaded', () => {
         deckCounter.textContent = `الكرت ${gameState.totalTurns} / 108`;
     }
 
-    /** (جديد) تطبيق تأثيرات الكروت */
     function applyCardAction(card) {
         const playerCount = gameState.playerNames.length;
 
         if (card.value === 'reverse') {
-            gameState.playDirection *= -1; // عكس الاتجاه
+            gameState.playDirection *= -1;
         
         } else if (card.value === 'skip') {
-            // تخطي اللاعب التالي (نضيف 1 للدور)
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
         
         } else if (card.value === 'draw2') {
-            // تخطي اللاعب التالي (نفس تأثير Skip في لعبتنا)
-            // (يمكن تعديلها لاحقاً لجعله يسحب 2)
             gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
-        
-        } else if (card.value === 'bomb') {
-            // كرت القنبلة (+4)
-            // (حالياً لا نفعل شيئاً سوى إظهار الرسالة، يمكن تعديلها لاحقاً)
-            // (لأن اللاعب الحالي هو من يختار، لا نحتاج لتخطي أدوار)
         }
+        // (لا حاجة لشيء في wild أو bomb حالياً)
     }
 
+    /** (تحديث!) بناء عنصر HTML للكرت */
     function createCardElement(card) {
         const cardDiv = document.createElement('div');
-        cardDiv.className = `neo-card card-${card.color} card-type-${card.type}`;
+        // استخدام الخلفيات التي صممتها (bg-red.png إلخ)
+        cardDiv.className = `neo-card card-${card.color}`;
         
         let question = '';
         let cornerIconSrc = '';
-        let logoSrc = 'assets/images/logo.png'; // (اسم افتراضي للشعار)
-
+        
         if (card.type === 'number') {
             const questionBank = gameState.questions[card.color] || gameState.questions['green'];
             question = questionBank[Math.floor(Math.random() * questionBank.length)];
             
-            // (للبساطة، لن نعرض أيقونات للأرقام، سنعتمد على الخلفية فقط)
-            cornerIconSrc = ''; 
+            // (جديد!) استخدام صور الأرقام التي رفعتها
+            cornerIconSrc = `assets/images/num-${card.value}.png`; 
         
         } else if (card.type === 'action') {
             question = ACTION_MESSAGES[card.value];
-            cornerIconSrc = `assets/images/icon-${card.value}.png`; // (مثل: icon-skip.png)
+            cornerIconSrc = `assets/images/icon-${card.value}.png`;
         
         } else if (card.type === 'wild') {
             question = ACTION_MESSAGES[card.value];
-            cornerIconSrc = `assets/images/icon-${card.value}.png`; // (مثل: icon-bomb.png)
+            cornerIconSrc = `assets/images/icon-${card.value}.png`;
         }
 
         // بناء الـ HTML الداخلي للكرت
+        // (تم حذف .card-logo من هنا لأنه مدمج في الخلفية)
         cardDiv.innerHTML = `
             <div class="card-corner top-left">
                 ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
             </div>
+
             <div class="card-content-box pixel-speech-box">
                 <p class="card-question">${question}</p>
             </div>
-            <div class="card-logo">
-                <img src="${logoSrc}" alt="NEO Sawlif">
-            </div>
+
             <div class="card-corner bottom-right">
                 ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
             </div>
