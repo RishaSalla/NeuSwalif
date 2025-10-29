@@ -6,17 +6,15 @@
     --font-pixel: 'Press Start 2P', 'Cairo', system-ui;
     --font-arabic: 'Cairo', system-ui;
 
-    /* ألوان البكسل المقترحة */
-    --color-bg: #1a202c; /* خلفية داكنة */
-    --color-box-bg: #2d3748; /* خلفية الصندوق */
-    --color-border: #FFF;     /* حدود بيضاء */
-    --color-text: #FFF;      /* نص أبيض */
+    --color-bg: #1a202c; 
+    --color-box-bg: #2d3748; 
+    --color-border: #FFF;     
+    --color-text: #FFF;      
     
     --color-green: #38A169;
     --color-yellow: #D69E2E;
     --color-blue: #3182CE;
 
-    /* (جديد) تحديد مسارات الصور الرئيسية */
     --img-logo: url('assets/images/logo.png');
     --img-back: url('assets/images/card-back.png');
     
@@ -136,7 +134,6 @@ p {
 
 /* --- 4. عناصر واجهة مخصصة --- */
 
-/* (جديد) الشعار في شاشة الإعداد */
 .setup-logo {
     width: 150px;
     margin-bottom: 10px;
@@ -192,10 +189,7 @@ p {
 }
 
 #deck-counter {
-    font-family: var(--font-pixel);
-    font-size: 1rem;
-    color: #AAA;
-    margin-top: 15px;
+    display: none; 
 }
 
 #card-container {
@@ -208,29 +202,25 @@ p {
 
 
 /* --- 5. تصميم كرت اللعبة (NEO Card) --- */
-/* (تم تحديث هذا القسم بالكامل) */
+/* (تعديل!) جعل الحاوية شفافة */
 
 .neo-card {
     width: 320px;
     height: 480px;
-    /* (ملاحظة: الحدود مدمجة الآن في الصورة، لكن سنبقيها كاحتياط) */
-    border: 4px solid var(--color-border); 
-    background-color: #333; /* لون احتياطي */
+    
+    /* (تم حذف 'border' و 'background-color' و 'box-shadow' من هنا) */
+    
     background-size: cover;
     background-position: center;
-    border-radius: 16px;
-    position: relative; /* مهم لتوزيع العناصر بالداخل */
+    background-repeat: no-repeat; /* لضمان عدم تكرار الصورة */
     
+    position: relative; 
     display: flex;
     flex-direction: column;
     justify-content: space-between; 
     align-items: center;
     padding: 15px;
     box-sizing: border-box; 
-    
-    box-shadow: 
-        0 8px 0 0 rgba(0,0,0,0.2),
-        0 8px 0 4px var(--color-border);
 }
 
 /* تطبيق خلفيات الصور الصحيحة */
@@ -246,6 +236,7 @@ p {
     width: 64px; 
     height: 64px;
     position: absolute;
+    /* (ملاحظة: إذا كانت أيقوناتك مدمجة في الخلفية، سنحذف هذا القسم لاحقاً) */
 }
 .card-corner img {
     width: 100%;
@@ -258,37 +249,27 @@ p {
 .card-corner.bottom-right {
     bottom: 10px;
     right: 10px;
-    /* (ملاحظة: إذا كانت أيقوناتك مصممة مقلوبة جاهزة، احذف السطر التالي) */
     transform: rotate(180deg); 
 }
 
 
-/* (ب) صندوق السؤال (البكسلي) */
+/* (ب) صندوق السؤال (أصبح شفافاً) */
 .card-content-box {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%); 
     
-    width: 85%;
+    width: 85%; 
     min-height: 150px;
     padding: 20px;
     box-sizing: border-box;
-    
-    /* تصميم صندوق الحوار البكسلي */
-    background: #FFF;
-    color: var(--color-bg);
-    border: 4px solid var(--color-border);
-    box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.2);
-    border-radius: 8px;
 }
 
 .card-question {
-    font-size: 1.4rem;
+    font-size: 1.4rem; 
     font-weight: 700;
     line-height: 1.6;
     margin: 0;
+    color: #000; /* لون الخط (أسود). غيره إذا احتجت */
 }
-
-/* (ج) الشعار */
-/* (تم حذف كلاس .card-logo من هنا لأنه أصبح مدمجاً في الخلفية) */
