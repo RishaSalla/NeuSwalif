@@ -10,9 +10,7 @@
 
     <div id="setup-screen" class="modal-screen active">
         <div class="modal-content pixel-box">
-            
             <img src="assets/images/logo.png" alt="NEO Sawlif Logo" class="setup-logo">
-
             <h2 class="modal-title">NEO Sawlif</h2>
             <p>اختر عدد اللاعبين (2-6):</p>
             <div class="player-count-selector">
@@ -36,19 +34,27 @@
     <div id="pass-device-screen" class="modal-screen">
         <div class="modal-content pixel-box">
             <h2 class="modal-title" id="pass-device-title">الدور على: [اسم اللاعب]</h2>
-            <p>مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز" لقلب الكرت!</p>
-            <button id="show-card-btn" class="action-btn pixel-btn green">أنا جاهز (اقلب الكرت)</button>
+            <p>مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز"!</p>
+            <button id="show-card-btn" class="action-btn pixel-btn green">أنا جاهز</button>
         </div>
     </div>
 
     <div id="game-screen" class="modal-screen">
         
         <div id="card-container">
+            <div id="card-flipper">
+                <div class="card-face card-back">
+                    </div>
+                <div class="card-face card-front">
+                    </div>
             </div>
+        </div>
 
-        <button id="end-turn-btn" class="action-btn pixel-btn yellow">السؤال التالي</button>
-        <span id="deck-counter">الكرت 1 / 108</span>
-    </div>
+        <button id="flip-card-btn" class="action-btn pixel-btn blue">اقلب الكرت</button>
+        
+        <button id="end-turn-btn" class="action-btn pixel-btn yellow hidden">السؤال التالي</button>
+        
+        <span id="deck-counter"></span> </div>
 
     <div id="game-over-screen" class="modal-screen">
         <div class="modal-content pixel-box">
