@@ -9,10 +9,10 @@ let gameState = {
     totalTurns: 0,
     questions: {},
     currentCard: null,
-    forcedColor: null, // لون الوايلد
-    turnsToPlay: 1,      // (جديد) لكرت +2
+    forcedColor: null,
+    turnsToPlay: 1,      // 1 = دور عادي, 2 = عقوبة +2
     
-    timerDuration: 30, 
+    timerDuration: 0, // (تعديل!) 0 هو الافتراضي (∞)
     timerId: null,      
     timeLeft: 0,        
     isPaused: false
@@ -26,8 +26,8 @@ const screens = {
     game: document.getElementById('game-screen'),
     gameOver: document.getElementById('game-over-screen'),
     pause: document.getElementById('pause-screen'),
-    exitConfirm: document.getElementById('exit-confirm-screen'),   // (جديد)
-    elimination: document.getElementById('elimination-screen') // (جديد)
+    exitConfirm: document.getElementById('exit-confirm-screen'),   
+    elimination: document.getElementById('elimination-screen') 
 };
 
 const gameControls = document.getElementById('game-controls');
@@ -38,7 +38,7 @@ const timerSelectDisplay = document.getElementById('timer-select-display');
 const incrementTimerBtn = document.getElementById('increment-timer');
 const decrementTimerBtn = document.getElementById('decrement-timer');
 const timerSteps = [0, 10, 15, 20, 30, 40, 50, 60]; 
-let currentTimerStep = 4; 
+let currentTimerStep = 0; // (تعديل!) الافتراضي هو 0 (∞)
 
 const playerCountDisplay = document.getElementById('player-count-display');
 const incrementPlayersBtn = document.getElementById('increment-players');
@@ -47,16 +47,16 @@ const setupNextBtn = document.getElementById('setup-next-btn');
 
 const playerNamesInputsContainer = document.getElementById('player-names-inputs');
 const startGameBtn = document.getElementById('start-game-btn');
+const namesBackBtn = document.getElementById('names-back-btn'); // (جديد) زر الرجوع
 
 const passDeviceTitle = document.getElementById('pass-device-title');
-const passDeviceMessage = document.getElementById('pass-device-message'); // (جديد)
+const passDeviceMessage = document.getElementById('pass-device-message'); 
 const showCardBtn = document.getElementById('show-card-btn');
 
 const timerContainer = document.getElementById('timer-container');
 const timerBar = document.getElementById('timer-bar');
 
 const cardContainer = document.getElementById('card-container');
-const deckCounter = document.getElementById('deck-counter');
 const endTurnBtn = document.getElementById('end-turn-btn');
 const playAgainBtn = document.getElementById('play-again-btn');
 
@@ -70,33 +70,34 @@ const wildColorButtons = document.querySelectorAll('.wild-btn');
 const gameOverTitle = document.querySelector('#game-over-screen .modal-title');
 const gameOverMessage = document.querySelector('#game-over-screen p');
 
-// (جديد) شاشات التأكيد
 const resumeBtn = document.getElementById('resume-btn');
 const exitConfirmYesBtn = document.getElementById('exit-confirm-yes-btn');
 const exitConfirmNoBtn = document.getElementById('exit-confirm-no-btn');
 const eliminationMessage = document.getElementById('elimination-message');
 const eliminationOkBtn = document.getElementById('elimination-ok-btn');
 
-
 const ACTION_MESSAGES = {
     'skip': "تخطي الدور! اللاعب التالي يفقد دوره.",
     'reverse': "عكس الاتجاه! اتجاه اللعب ينعكس الآن.",
-    'draw2': "اسحب كرتين! عليك اللعب مرتين متتاليتين.", // (تعديل الرسالة)
+    'draw2': "اسحب كرتين! 💣 اللاعب التالي سيلعب دورتين متتاليتين.",
     'wild': "وايلد كارد! اختر لون السؤال التالي.",
     'bomb': "قنبلة! 💣 اللاعب التالي يخرج من اللعبة!"
 };
 
 // --- 4. وظيفة التنقل بين الشاشات ---
 function showScreen(screenId) {
-    for (let id in screens) {
-        if (screens[id]) {
-            screens[id].classList.remove('active');
-        }
-    }
+    // إخفاء جميع الشاشات المنبثقة أولاً
+    Object.values(screens).forEach(screen => {
+        // (تعديل!) التعامل مع الشاشات التي هي ليست شاشات رئيسية
+        if (screen) screen.classList.remove('active');
+    });
+    
+    // إظهار الشاشة المطلوبة
     if (screens[screenId]) {
         screens[screenId].classList.add('active');
     }
 
+    // إظهار/إخفاء أزرار التحكم
     if (['passDevice', 'game'].includes(screenId)) {
         gameControls.classList.remove('hidden');
     } else {
@@ -155,24 +156,24 @@ startGameBtn.addEventListener('click', () => {
     gameState.playerNames = Array.from(nameInputs).map((input, i) => input.value || `لاعب ${i + 1}`);
     resetGame();
 });
+// (جديد!) زر الرجوع
+namesBackBtn.addEventListener('click', () => {
+    showScreen('setup');
+});
 
 // (ج) شاشة تمرير الجهاز (Pass Device)
 showCardBtn.addEventListener('click', () => {
-    // 1. (تعديل!) سحب الكرت الصحيح (مع التحقق من الوايلد)
     drawAndDisplayCard(); 
-    
-    // 2. إعادة ضبط الكرت ليظهر الظهر
     if (cardFlipper) {
         cardFlipper.classList.remove('flipped');
     }
-    
-    // 3. إظهار/إخفاء الأزرار
+    // (تعديل!) إظهار/إخفاء الأزرار لتوحيد المكان
     flipCardBtn.classList.remove('hidden');
     endTurnBtn.classList.add('hidden');
     wildColorPicker.classList.add('hidden'); 
-    timerContainer.classList.add('hidden'); 
     
-    // 4. الانتقال لشاشة اللعب
+    timerContainer.classList.remove('active'); // إخفاء المؤقت
+    
     showScreen('game');
 });
 
@@ -183,12 +184,11 @@ flipCardBtn.addEventListener('click', () => {
     }
     flipCardBtn.classList.add('hidden');
     
-    // بدء المؤقت (سيتحقق إذا كان 0)
     startTimer();
 
-    // (جديد!) تأخير ظهور الأزرار وتأثير القنبلة
+    // تأخير ظهور الأزرار وتأثير القنبلة (لإصلاح الخطأ #8)
     setTimeout(() => {
-        if (gameState.isPaused) return; // لا تفعل شيئاً إذا أوقف اللاعب اللعبة
+        if (gameState.isPaused) return; 
 
         if (gameState.currentCard.value === 'wild') {
             wildColorPicker.classList.remove('hidden');
@@ -197,13 +197,9 @@ flipCardBtn.addEventListener('click', () => {
             applyCardAction(gameState.currentCard); // تطبيق الإقصاء
             showScreen('elimination'); // إظهار شاشة الإقصاء
         
-        } else if (gameState.currentCard.value === 'draw2') {
-             applyCardAction(gameState.currentCard); // (لوضع العقوبة turnsToPlay = 2)
-             endTurnBtn.classList.remove('hidden');
-        
         } else {
-            applyCardAction(gameState.currentCard); // (لتطبيق reverse/skip)
-            endTurnBtn.classList.remove('hidden');
+             applyCardAction(gameState.currentCard); // (لتطبيق +2, skip, reverse)
+             endTurnBtn.classList.remove('hidden');
         }
     }, 600); // 600ms = مدة أنيميشن القلب
 });
@@ -219,13 +215,13 @@ wildColorButtons.forEach(button => {
 });
 
 
-// (و) زر "السؤال التالي"
+// (و) زر "التالي" (إنهاء الدور)
 endTurnBtn.addEventListener('click', () => {
     stopTimer(); 
     proceedToEndTurn();
 });
 
-// (جديد!) (ز) زر المتابعة من شاشة الإقصاء
+// (ز) زر المتابعة من شاشة الإقصاء
 eliminationOkBtn.addEventListener('click', () => {
     proceedToEndTurn();
 });
@@ -234,9 +230,9 @@ eliminationOkBtn.addEventListener('click', () => {
 playAgainBtn.addEventListener('click', () => {
     gameState.playerCount = 2;
     playerCountDisplay.textContent = '2';
-    currentTimerStep = 4; 
-    timerSelectDisplay.textContent = '30';
-    gameState.timerDuration = 30;
+    currentTimerStep = 0; // (تعديل!) إعادة لـ ∞
+    timerSelectDisplay.textContent = '∞';
+    gameState.timerDuration = 0;
     
     gameOverTitle.textContent = "انتهت الكروت!";
     gameOverMessage.textContent = "لقد أكملتم جميع الأسئلة. كانت جلسة رائعة!";
@@ -246,34 +242,31 @@ playAgainBtn.addEventListener('click', () => {
 // (تعديل!) (ط) أزرار التحكم العلوية وشاشات الإيقاف
 pauseBtn.addEventListener('click', pauseGame);
 exitBtn.addEventListener('click', () => {
-    // زر الخروج يفتح شاشة تأكيد الخروج
-    pauseGame(); // (يوقف المؤقت أولاً)
-    showScreen('exitConfirm');
+    // (إصلاح الخطأ #4)
+    pauseGame(); // أوقف اللعبة
+    showScreen('exitConfirm'); // اظهر شاشة تأكيد الخروج
 });
 resumeBtn.addEventListener('click', resumeGame);
 exitConfirmYesBtn.addEventListener('click', exitGame);
 exitConfirmNoBtn.addEventListener('click', () => {
-    // إذا ضغط "لا"، نعود للعبة (أو شاشة الإيقاف)
-    resumeGame(); 
+    resumeGame(); // العودة للعبة
 });
 
 
 // --- 6. منطق اللعبة الأساسي ---
 
-/** (تعديل!) وظيفة إنهاء الدور (تدعم +2) */
 function proceedToEndTurn() {
     if (checkWinCondition()) return;
     
-    // (جديد!) التحقق من عقوبة +2
+    // التحقق من عقوبة +2
     if (gameState.turnsToPlay > 1) {
-        gameState.turnsToPlay--; // إنقاص العقوبة
+        gameState.turnsToPlay--; 
         
-        // إجبار اللاعب الحالي على اللعب مرة أخرى
         const currentPlayerName = gameState.playerNames[gameState.currentPlayerIndex];
         passDeviceTitle.textContent = `الدور على: ${currentPlayerName}`;
         passDeviceMessage.textContent = `دورك الإضافي (${gameState.turnsToPlay + 1}/2)! اضغط "أنا جاهز"`;
         showScreen('passDevice');
-        return; // الخروج من الوظيفة (لا تنقل الدور)
+        return; 
     }
     
     // إذا لم يكن هناك عقوبة، ابحث عن اللاعب النشط التالي
@@ -287,7 +280,7 @@ function proceedToEndTurn() {
     if (checkWinCondition()) return;
 
     passDeviceTitle.textContent = `الدور على: ${gameState.playerNames[gameState.currentPlayerIndex]}`;
-    passDeviceMessage.textContent = 'مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز"!'; // إعادة الرسالة للأصل
+    passDeviceMessage.textContent = 'مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز"!'; 
     showScreen('passDevice');
 }
 
@@ -317,7 +310,7 @@ function resetGame() {
     gameState.deck = [];
     gameState.forcedColor = null;
     gameState.isPaused = false;
-    gameState.turnsToPlay = 1; // (جديد)
+    gameState.turnsToPlay = 1; 
     stopTimer(); 
     
     gameState.activePlayers = gameState.playerNames.map((name, index) => ({
@@ -370,18 +363,19 @@ function shuffleDeck() {
     }
 }
 
-/** (جديد) البحث عن كرت باللون المطلوب (للويلد كارد) */
+/** (إصلاح الخطأ #3) البحث عن كرت باللون المطلوب (للويلد كارد) */
 function findAndDrawForcedCard(color) {
-    // البحث من نهاية الكومة (الأعلى)
     for (let i = gameState.deck.length - 1; i >= 0; i--) {
         if (gameState.deck[i].color === color) {
-            // وجدنا الكرت! اسحبه
-            const card = gameState.deck.splice(i, 1)[0]; // اسحبه من الكومة
+            const card = gameState.deck.splice(i, 1)[0]; 
             return card;
         }
     }
-    // إذا لم نجد الكرت المطلوب، اسحب أي كرت عشوائي
-    return gameState.deck.pop();
+    // إذا لم نجد الكرت، اسحب أي كرت وأجبره على استخدام بنك الأسئلة
+    // (تعديل!) الأفضل سحب أي كرت، وتطبيق اللون المفروض على السؤال فقط
+    // (سنعود للخطة الأصلية لأن البحث مكلف جداً - سنفرض السؤال فقط)
+    // (الخطة ب:) سنفرض السؤال، لا الكرت.
+    return gameState.deck.pop(); // اسحب كرت عشوائي
 }
 
 /** (تعديل!) سحب الكرت (يدعم الوايلد) */
@@ -395,14 +389,10 @@ function drawAndDisplayCard() {
     }
 
     let card;
-    if (gameState.forcedColor) {
-        // (جديد!) تم فرض لون من الوايلد
-        card = findAndDrawForcedCard(gameState.forcedColor);
-        gameState.forcedColor = null; // إعادة تعيين بعد السحب
-    } else {
-        // السحب العشوائي المعتاد
-        card = gameState.deck.pop();
-    }
+    // (إصلاح الخطأ #3 - الخطة ب)
+    // لن نبحث عن كرت، سنسحب عشوائياً.
+    // سيتم تطبيق اللون المفروض في 'createCardElement'
+    card = gameState.deck.pop();
     
     gameState.currentCard = card; 
     gameState.totalTurns++;
@@ -411,65 +401,84 @@ function drawAndDisplayCard() {
     cardFront.appendChild(cardElement);
 }
 
-/** (تعديل!) تطبيق تأثيرات الكروت */
+/** (تعديل!) تطبيق تأثيرات الكروت (إصلاح +2 و القنبلة) */
 function applyCardAction(card) {
     const playerCount = gameState.playerNames.length;
+    let targetPlayerIndex = gameState.currentPlayerIndex; // الافتراضي هو اللاعب الحالي
+    
+    // البحث عن اللاعب النشط التالي (الضحية)
+    let attempts = 0;
+    do {
+        targetPlayerIndex = (targetPlayerIndex + gameState.playDirection + playerCount) % playerCount;
+        if (gameState.activePlayers[targetPlayerIndex].active && targetPlayerIndex !== gameState.currentPlayerIndex) {
+            break; // وجدنا الضحية
+        }
+        attempts++;
+    } while (attempts < playerCount * 2);
+
+    // الآن نطبق الأكشن على 'targetPlayerIndex'
     
     if (card.value === 'reverse') {
         gameState.playDirection *= -1;
     
     } else if (card.value === 'skip') {
+        // لا تفعل شيئاً، لأن 'proceedToEndTurn' سيتخطى اللاعب الحالي
+        // (تعديل!) لا، يجب أن نجعل اللاعب التالي هو الضحية
+        // (خطأ في المنطق السابق) - يجب أن نطبق التخطي على الضحية
+        // (للبساطة، "تخطي" يعني أن اللاعب التالي سيفقد دوره)
+        // (الكود الحالي لـ proceedToEndTurn ينقل الدور، لذا "تخطي" يعني نقل الدور مرتين)
+        // (سنعتمد المنطق الأبسط: +1)
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
     
     } else if (card.value === 'draw2') {
-        // (جديد!) تطبيق عقوبة +2
-        gameState.turnsToPlay = 2; 
+        // (إصلاح الخطأ #6) تطبيق العقوبة على اللاعب التالي
+        gameState.activePlayers[targetPlayerIndex].turnsToPlay = 2;
     
     } else if (card.value === 'bomb') {
-        let targetPlayer = null;
-        let searchIndex = gameState.currentPlayerIndex;
-        let attempts = 0;
-        
-        // البحث عن اللاعب النشط التالي (غير اللاعب الحالي)
-        do {
-            searchIndex = (searchIndex + gameState.playDirection + playerCount) % playerCount;
-            if (gameState.activePlayers[searchIndex].active && searchIndex !== gameState.currentPlayerIndex) {
-                targetPlayer = gameState.activePlayers[searchIndex];
-                break;
-            }
-            attempts++;
-        } while (attempts < playerCount * 2); // منع حلقة لا نهائية
-
+        // (إصلاح الخطأ #8)
+        const targetPlayer = gameState.activePlayers[targetPlayerIndex];
         if (targetPlayer) {
             targetPlayer.active = false;
-            console.log(`تم إقصاء اللاعب: ${targetPlayer.name}`);
-            // (جديد!) تحديث رسالة الإقصاء للشاشة
             eliminationMessage.textContent = `تم إقصاء اللاعب ${targetPlayer.name}!`;
         } else {
-            // (حالة نادرة: لا يوجد لاعب لإقصائه؟)
             eliminationMessage.textContent = "القنبلة لم تصب أحداً!";
         }
     }
 }
 
+/** (تعديل!) بناء عنصر HTML للكرت (إصلاح الوايلد) */
 function createCardElement(card) {
-    // ... (الكود كما هو - لا تغيير) ...
-    // (المنطق القديم للـ forcedColor تم نقله إلى drawAndDisplayCard)
     const cardDiv = document.createElement('div');
-    cardDiv.className = `neo-card card-${card.color}`; 
+    // (إصلاح الوايلد #3) إذا تم فرض لون، أظهر الكرت باللون المفروض
+    const displayColor = gameState.forcedColor || card.color;
+    cardDiv.className = `neo-card card-${displayColor}`; 
+    
     let question = '';
     let cornerIconSrc = '';
+    
     if (card.type === 'number') {
-        const questionBank = gameState.questions[card.color] || gameState.questions['green'];
+        // (إصلاح الوايلد #3) استخدم اللون المفروض للسؤال
+        const questionBank = gameState.questions[displayColor] || gameState.questions['green'];
         question = questionBank[Math.floor(Math.random() * questionBank.length)];
         cornerIconSrc = `assets/images/num-${card.value}.png`; 
+    
     } else if (card.type === 'action') {
-        question = ACTION_MESSAGES[card.value];
+        // (إصلاح الوايلد #3)
+        const questionBank = gameState.questions[displayColor] || gameState.questions['green'];
+        question = questionBank[Math.floor(Math.random() * questionBank.length)];
+        // (ملاحظة: السؤال سيكون من اللون المفروض، لكن الأيقونة من الكرت المسحوب)
         cornerIconSrc = `assets/images/icon-${card.value}.png`;
+    
     } else if (card.type === 'wild') {
         question = ACTION_MESSAGES[card.value];
         cornerIconSrc = `assets/images/icon-${card.value}.png`;
     }
+
+    // (إصلاح الوايلد #3) إعادة تعيين اللون المفروض بعد استخدامه
+    if (gameState.forcedColor) {
+        gameState.forcedColor = null;
+    }
+
     cardDiv.innerHTML = `
         <div class="card-corner top-left">
             ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
@@ -481,6 +490,7 @@ function createCardElement(card) {
             ${cornerIconSrc ? `<img src="${cornerIconSrc}" alt="${card.value}">` : ''}
         </div>
     `;
+    
     return cardDiv;
 }
 
@@ -489,17 +499,17 @@ function createCardElement(card) {
 
 function startTimer() {
     if (gameState.timerDuration === 0) {
-        timerContainer.classList.add('hidden');
+        timerContainer.classList.remove('active');
         return;
     }
     
-    timerContainer.classList.remove('hidden'); // (تعديل! كان .active)
-    timerContainer.classList.add('active'); // (إضافة .active لإظهاره)
-    timerBar.style.transition = 'none'; // إزالة الأنيميشن القديم
+    timerContainer.classList.add('active'); 
+    timerBar.style.transition = 'none'; 
     timerBar.style.width = '100%';
+    timerBar.style.backgroundColor = 'var(--color-green)'; // (إعادة ضبط اللون)
     gameState.timeLeft = gameState.timerDuration;
     
-    stopTimer(); // إيقاف أي مؤقت قديم
+    stopTimer(); 
 
     gameState.timerId = setInterval(() => {
         if (gameState.isPaused) return; 
@@ -510,8 +520,7 @@ function startTimer() {
         if (gameState.timeLeft <= 0) {
             console.log("انتهى الوقت!");
             stopTimer();
-            // إنهاء الدور تلقائياً
-            if (gameState.currentCard.value !== 'bomb') { // (لا تطبق القنبلة مرتين)
+            if (gameState.currentCard.value !== 'bomb') { 
                  applyCardAction(gameState.currentCard);
             }
             proceedToEndTurn();
@@ -539,7 +548,6 @@ function updateTimerBar() {
 
 function pauseGame() {
     gameState.isPaused = true;
-    // (تعديل!) إظهار شاشة الإيقاف فقط إذا لم تكن شاشة الخروج ظاهرة
     if (!screens.exitConfirm.classList.contains('active')) {
         showScreen('pause');
     }
@@ -547,7 +555,6 @@ function pauseGame() {
 
 function resumeGame() {
     gameState.isPaused = false;
-    // (تعديل!) إخفاء شاشات التأكيد والعودة للعبة
     screens.pause.classList.remove('active');
     screens.exitConfirm.classList.remove('active');
     showScreen('game');
@@ -556,15 +563,14 @@ function resumeGame() {
 function exitGame() {
     stopTimer();
     gameState.isPaused = false;
-    // (تعديل!) إخفاء الشاشات المنبثقة
     screens.pause.classList.remove('active');
     screens.exitConfirm.classList.remove('active');
     
     gameState.playerCount = 2;
     playerCountDisplay.textContent = '2';
-    currentTimerStep = 4; 
-    timerSelectDisplay.textContent = '30';
-    gameState.timerDuration = 30;
+    currentTimerStep = 0; 
+    timerSelectDisplay.textContent = '∞';
+    gameState.timerDuration = 0;
     showScreen('setup');
 }
 
