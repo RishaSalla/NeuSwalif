@@ -2,14 +2,20 @@
 let gameState = {
     playerCount: 2,
     playerNames: [],
-    activePlayers: [], // (جديد) لتتبع اللاعبين الذين لم يتم إقصاؤهم
+    activePlayers: [], 
     currentPlayerIndex: 0,
     deck: [],
     playDirection: 1, 
     totalTurns: 0,
     questions: {},
     currentCard: null,
-    forcedColor: null 
+    forcedColor: null,
+    
+    // (جديد) متغيرات المؤقت
+    timerDuration: 30, // 30 ثانية افتراضي
+    timerId: null,      // لحفظ معرّف المؤقت (setInterval)
+    timeLeft: 0,        // الوقت المتبقي بالثواني
+    isPaused: false
 };
 
 // --- 3. ربط عناصر الواجهة (DOM Elements) ---
@@ -18,8 +24,21 @@ const screens = {
     names: document.getElementById('names-screen'),
     passDevice: document.getElementById('pass-device-screen'),
     game: document.getElementById('game-screen'),
-    gameOver: document.getElementById('game-over-screen')
+    gameOver: document.getElementById('game-over-screen'),
+    pause: document.getElementById('pause-screen') // (جديد)
 };
+
+// (جديد) أزرار التحكم العلوية
+const gameControls = document.getElementById('game-controls');
+const pauseBtn = document.getElementById('pause-btn');
+const exitBtn = document.getElementById('exit-btn');
+
+// (جديد) شاشة الإعداد (المؤقت)
+const timerSelectDisplay = document.getElementById('timer-select-display');
+const incrementTimerBtn = document.getElementById('increment-timer');
+const decrementTimerBtn = document.getElementById('decrement-timer');
+const timerSteps = [0, 10, 15, 20, 30, 40, 50, 60]; // الخطوات الممكنة
+let currentTimerStep = 4; // (يشير إلى 30 ثانية)
 
 const playerCountDisplay = document.getElementById('player-count-display');
 const incrementPlayersBtn = document.getElementById('increment-players');
@@ -31,6 +50,10 @@ const startGameBtn = document.getElementById('start-game-btn');
 
 const passDeviceTitle = document.getElementById('pass-device-title');
 const showCardBtn = document.getElementById('show-card-btn');
+
+// (جديد) شاشة اللعب (المؤقت)
+const timerContainer = document.getElementById('timer-container');
+const timerBar = document.getElementById('timer-bar');
 
 const cardContainer = document.getElementById('card-container');
 const deckCounter = document.getElementById('deck-counter');
@@ -44,9 +67,12 @@ const cardFront = document.querySelector('.card-front');
 const wildColorPicker = document.getElementById('wild-color-picker');
 const wildColorButtons = document.querySelectorAll('.wild-btn');
 
-// (جديد) شاشة نهاية اللعبة (لتغيير النص)
 const gameOverTitle = document.querySelector('#game-over-screen .modal-title');
 const gameOverMessage = document.querySelector('#game-over-screen p');
+
+// (جديد) شاشة الإيقاف
+const resumeBtn = document.getElementById('resume-btn');
+const exitGameConfirmBtn = document.getElementById('exit-game-confirm-btn');
 
 
 const ACTION_MESSAGES = {
@@ -54,7 +80,7 @@ const ACTION_MESSAGES = {
     'reverse': "عكس الاتجاه! اتجاه اللعب ينعكس الآن.",
     'draw2': "اسحب +2! اللاعب التالي يجاوب على سؤالين ويخسر دوره.",
     'wild': "وايلد كارد! اختر لون السؤال التالي.",
-    'bomb': "قنبلة! 💣 اللاعب التالي يخرج من اللعبة!" // (تم تحديث الرسالة)
+    'bomb': "قنبلة! 💣 اللاعب التالي يخرج من اللعبة!"
 };
 
 // --- 4. وظيفة التنقل بين الشاشات ---
@@ -65,7 +91,14 @@ function showScreen(screenId) {
         }
     }
     if (screens[screenId]) {
-        screens[id].classList.add('active');
+        screens[screenId].classList.add('active');
+    }
+
+    // (جديد) إظهار أو إخفاء أزرار التحكم
+    if (['passDevice', 'game'].includes(screenId)) {
+        gameControls.classList.remove('hidden');
+    } else {
+        gameControls.classList.add('hidden');
     }
 }
 
@@ -84,12 +117,32 @@ decrementPlayersBtn.addEventListener('click', () => {
         playerCountDisplay.textContent = gameState.playerCount;
     }
 });
+// (جديد) أزرار المؤقت
+incrementTimerBtn.addEventListener('click', () => {
+    if (currentTimerStep < timerSteps.length - 1) {
+        currentTimerStep++;
+        gameState.timerDuration = timerSteps[currentTimerStep];
+        timerSelectDisplay.textContent = gameState.timerDuration === 0 ? '∞' : gameState.timerDuration;
+    }
+});
+decrementTimerBtn.addEventListener('click', () => {
+     if (currentTimerStep > 0) {
+        currentTimerStep--;
+        gameState.timerDuration = timerSteps[currentTimerStep];
+        timerSelectDisplay.textContent = gameState.timerDuration === 0 ? '∞' : gameState.timerDuration;
+    }
+});
+
 setupNextBtn.addEventListener('click', () => {
+    // (تعديل) حفظ مدة المؤقت
+    gameState.timerDuration = timerSteps[currentTimerStep];
+    console.log(`تم ضبط المؤقت على: ${gameState.timerDuration} ثواني`);
     createNameInputs(gameState.playerCount);
     showScreen('names');
 });
 
 // (ب) شاشة الأسماء (Names)
+// ... (الكود كما هو - لا تغيير) ...
 function createNameInputs(count) {
     playerNamesInputsContainer.innerHTML = ''; 
     for (let i = 0; i < count; i++) {
@@ -115,6 +168,10 @@ showCardBtn.addEventListener('click', () => {
     flipCardBtn.classList.remove('hidden');
     endTurnBtn.classList.add('hidden');
     wildColorPicker.classList.add('hidden'); 
+    
+    // (جديد) إخفاء المؤقت (سيظهر عند قلب الكرت)
+    timerContainer.classList.add('hidden');
+    
     showScreen('game');
 });
 
@@ -125,14 +182,14 @@ flipCardBtn.addEventListener('click', () => {
     }
     flipCardBtn.classList.add('hidden');
     
-    // (تعديل!) التحقق إذا كان الكرت قنبلة أو وايلد
+    // (جديد) بدء المؤقت
+    startTimer();
+
     if (gameState.currentCard.value === 'wild') {
         wildColorPicker.classList.remove('hidden');
     
     } else if (gameState.currentCard.value === 'bomb') {
-        // إذا كان قنبلة، طبّق التأثير فوراً (الإقصاء)
         applyCardAction(gameState.currentCard);
-        // ثم أظهر زر "السؤال التالي" (لإنهاء الدور)
         endTurnBtn.classList.remove('hidden');
 
     } else {
@@ -143,17 +200,17 @@ flipCardBtn.addEventListener('click', () => {
 // (هـ) أزرار اختيار لون الوايلد
 wildColorButtons.forEach(button => {
     button.addEventListener('click', () => {
+        stopTimer(); // (جديد) إيقاف المؤقت
         gameState.forcedColor = button.dataset.color;
         wildColorPicker.classList.add('hidden');
-        proceedToEndTurn(); // إنهاء الدور بعد اختيار اللون
+        proceedToEndTurn();
     });
 });
 
 
 // (و) شاشة اللعب (Game Screen)
 endTurnBtn.addEventListener('click', () => {
-    // تطبيق الأكشن (للكروت العادية مثل Reverse/Skip)
-    // (القنبلة تم تطبيقها عند قلب الكرت)
+    stopTimer(); // (جديد) إيقاف المؤقت
     if (gameState.currentCard.value !== 'bomb') {
          applyCardAction(gameState.currentCard);
     }
@@ -164,52 +221,48 @@ endTurnBtn.addEventListener('click', () => {
 playAgainBtn.addEventListener('click', () => {
     gameState.playerCount = 2;
     playerCountDisplay.textContent = '2';
-    // (جديد) إعادة ضبط رسالة نهاية اللعبة
+    // (تعديل) إعادة ضبط المؤقت الافتراضي
+    currentTimerStep = 4; // 30 ثانية
+    timerSelectDisplay.textContent = '30';
+    gameState.timerDuration = 30;
+    
     gameOverTitle.textContent = "انتهت الكروت!";
     gameOverMessage.textContent = "لقد أكملتم جميع الأسئلة. كانت جلسة رائعة!";
     showScreen('setup');
 });
 
+// (جديد!) (ح) أزرار التحكم العلوية وشاشة الإيقاف
+pauseBtn.addEventListener('click', pauseGame);
+exitBtn.addEventListener('click', pauseGame); // كلاهما يفتح شاشة الإيقاف
+
+resumeBtn.addEventListener('click', resumeGame);
+exitGameConfirmBtn.addEventListener('click', exitGame);
+
 
 // --- 6. منطق اللعبة الأساسي ---
 
-/** (جديد) وظيفة إنهاء الدور (تبحث عن اللاعب النشط التالي) */
 function proceedToEndTurn() {
-    // 1. التحقق من حالة الفوز (قبل الانتقال للاعب التالي)
     if (checkWinCondition()) return;
-    
     const playerCount = gameState.playerNames.length;
     let nextPlayerIndex = gameState.currentPlayerIndex;
-
-    // 2. حلقة للبحث عن اللاعب النشط التالي
     do {
         nextPlayerIndex = (nextPlayerIndex + gameState.playDirection + playerCount) % playerCount;
-    } while (!gameState.activePlayers[nextPlayerIndex]); // استمر في البحث إذا كان اللاعب التالي "غير نشط"
-
+    } while (!gameState.activePlayers[nextPlayerIndex].active); 
     gameState.currentPlayerIndex = nextPlayerIndex;
-    
-    // 3. التحقق من حالة الفوز (بعد الانتقال للاعب التالي)
     if (checkWinCondition()) return;
-
     passDeviceTitle.textContent = `الدور على: ${gameState.playerNames[gameState.currentPlayerIndex]}`;
     showScreen('passDevice');
 }
 
-/** (جديد) التحقق من الفوز */
 function checkWinCondition() {
-    // 1. تصفية اللاعبين النشطين
     const activePlayersList = gameState.activePlayers.filter(player => player.active);
-    
     if (activePlayersList.length === 1) {
-        // 2. إذا بقي لاعب واحد، أعلن الفوز
         const winner = activePlayersList[0];
         gameOverTitle.textContent = "لدينا فائز!";
         gameOverMessage.textContent = `تهانينا لـ ${winner.name}! لقد نجوت من كل القنابل!`;
         showScreen('gameOver');
         return true;
-    
     } else if (activePlayersList.length === 0) {
-        // (حالة نادرة جداً: تعادل أو قنبلة أخيرة)
         gameOverTitle.textContent = "تعادل!";
         gameOverMessage.textContent = "تم إقصاء جميع اللاعبين!";
         showScreen('gameOver');
@@ -218,19 +271,19 @@ function checkWinCondition() {
     return false;
 }
 
-/** (تعديل!) إعادة تعيين وبدء اللعبة */
 function resetGame() {
     gameState.currentPlayerIndex = 0;
     gameState.playDirection = 1;
     gameState.totalTurns = 0;
     gameState.deck = [];
     gameState.forcedColor = null;
+    gameState.isPaused = false;
+    stopTimer(); // (جديد) التأكد من إيقاف أي مؤقت قديم
     
-    // (جديد) ملء مصفوفة اللاعبين النشطين
     gameState.activePlayers = gameState.playerNames.map((name, index) => ({
         index: index,
         name: name,
-        active: true // كلهم نشطون في البداية
+        active: true 
     }));
     
     buildDeck();
@@ -241,7 +294,6 @@ function resetGame() {
 }
 
 async function fetchQuestions() {
-    // ... (الكود كما هو - لا تغيير) ...
     try {
         const response = await fetch(`assets/data/questions.json?v=${new Date().getTime()}`);
         if (!response.ok) { throw new Error('فشل تحميل ملف الأسئلة!'); }
@@ -254,24 +306,18 @@ async function fetchQuestions() {
 
 function buildDeck() {
     // ... (الكود كما هو - لا تغيير) ...
-    gameState.deck = [];
-    const colors = ['red', 'blue', 'green', 'yellow'];
-    const actions = ['skip', 'reverse', 'draw2'];
-    const wilds = ['wild', 'bomb'];
+    gameState.deck = []; const colors = ['red', 'blue', 'green', 'yellow']; const actions = ['skip', 'reverse', 'draw2']; const wilds = ['wild', 'bomb'];
     for (const color of colors) {
         gameState.deck.push({ type: 'number', color: color, value: '0' });
         for (let i = 1; i <= 9; i++) {
-            gameState.deck.push({ type: 'number', color: color, value: i.toString() });
-            gameState.deck.push({ type: 'number', color: color, value: i.toString() });
+            gameState.deck.push({ type: 'number', color: color, value: i.toString() }); gameState.deck.push({ type: 'number', color: color, value: i.toString() });
         }
         for (const action of actions) {
-            gameState.deck.push({ type: 'action', color: color, value: action });
-            gameState.deck.push({ type: 'action', color: color, value: action });
+            gameState.deck.push({ type: 'action', color: color, value: action }); gameState.deck.push({ type: 'action', color: color, value: action });
         }
     }
     for (let i = 0; i < 4; i++) {
-        gameState.deck.push({ type: 'wild', color: 'black', value: 'wild' });
-        gameState.deck.push({ type: 'wild', color: 'black', value: 'bomb' });
+        gameState.deck.push({ type: 'wild', color: 'black', value: 'wild' }); gameState.deck.push({ type: 'wild', color: 'black', value: 'bomb' });
     }
 }
 
@@ -284,11 +330,8 @@ function shuffleDeck() {
 }
 
 function drawAndDisplayCard() {
-    // ... (تعديل بسيط: التحقق من الفوز قبل سحب الكرت) ...
     if (checkWinCondition()) return;
-
     if (gameState.deck.length === 0) {
-        // (جديد) إذا انتهت الكروت ولم يفز أحد (نادر)
         gameOverTitle.textContent = "انتهت الكروت!";
         gameOverMessage.textContent = "لم يتم إقصاء الجميع. أنتم أقوياء!";
         showScreen('gameOver');
@@ -302,44 +345,31 @@ function drawAndDisplayCard() {
     cardFront.appendChild(cardElement);
 }
 
-/** (تعديل!) تطبيق تأثيرات الكروت */
 function applyCardAction(card) {
     const playerCount = gameState.playerNames.length;
-    
     if (card.value === 'reverse') {
         gameState.playDirection *= -1;
-    
     } else if (card.value === 'skip') {
-        // (تعديل!) أصبحنا نبحث عن اللاعب النشط التالي، لذا "التخطي" يعني إضافة 1 للبحث
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
-    
     } else if (card.value === 'draw2') {
-        // (نفس تأثير Skip حالياً)
         gameState.currentPlayerIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
-    
     } else if (card.value === 'bomb') {
-        // (جديد!) منطق القنبلة
-        // 1. إيجاد اللاعب الهدف (التالي)
-        const targetIndex = (gameState.currentPlayerIndex + gameState.playDirection + playerCount) % playerCount;
-        
-        // 2. التحقق من أنه "نشط" (إذا لم يكن نشطاً، ابحث عن الذي يليه)
-        // (للبساطة الآن، سنقصي الهدف المباشر حتى لو كان مقصياً، لكن الأفضل هو البحث)
-        // (تعديل بسيط: نفترض أننا نبحث عن أول لاعب نشط تالٍ)
         let targetPlayer = null;
         let searchIndex = gameState.currentPlayerIndex;
+        // (تعديل!) البحث عن لاعب نشط غير اللاعب الحالي
+        let attempts = 0;
         do {
             searchIndex = (searchIndex + gameState.playDirection + playerCount) % playerCount;
-        } while (!gameState.activePlayers[searchIndex].active || searchIndex === gameState.currentPlayerIndex); // ابحث عن لاعب نشط غير اللاعب الحالي
+            if (gameState.activePlayers[searchIndex].active && searchIndex !== gameState.currentPlayerIndex) {
+                targetPlayer = gameState.activePlayers[searchIndex];
+                break;
+            }
+            attempts++;
+        } while (attempts < playerCount); // منع حلقة لا نهائية
 
-        targetPlayer = gameState.activePlayers[searchIndex];
-
-        // 3. إقصاء اللاعب
         if (targetPlayer) {
             targetPlayer.active = false;
             console.log(`تم إقصاء اللاعب: ${targetPlayer.name}`);
-            
-            // 4. عرض رسالة (مؤقتة)
-            // (سنضيف شاشة "إقصاء" احترافية لاحقاً بدلاً من alert)
             alert(`بوووم! 💣 تم إقصاء اللاعب ${targetPlayer.name} من اللعبة!`);
         }
     }
@@ -379,7 +409,93 @@ function createCardElement(card) {
 }
 
 
-// --- 7. تشغيل اللعبة ---
+// --- 7. (جديد!) منطق المؤقت والإيقاف ---
+
+function startTimer() {
+    // 1. لا تبدأ المؤقت إذا كان 0 (بدون مؤقت)
+    if (gameState.timerDuration === 0) {
+        timerContainer.classList.add('hidden');
+        return;
+    }
+    
+    // 2. إظهار وإعادة ضبط المؤقت
+    timerContainer.classList.remove('hidden');
+    timerBar.style.width = '100%';
+    timerBar.style.transition = `width ${gameState.timerDuration}s linear`; // أنيميشن ناعم
+    
+    // (للدقة، سنستخدم JS لتحديث النسبة المئوية)
+    timerBar.style.transition = 'width 0.1s linear'; // تحديث ناعم
+    gameState.timeLeft = gameState.timerDuration;
+    
+    // 3. إيقاف أي مؤقت قديم
+    stopTimer();
+
+    // 4. بدء المؤقت الجديد (يتم تحديثه كل 100 ملي ثانية)
+    gameState.timerId = setInterval(() => {
+        if (gameState.isPaused) return; // توقف إذا كانت اللعبة متوقفة
+
+        gameState.timeLeft -= 0.1;
+        updateTimerBar();
+
+        if (gameState.timeLeft <= 0) {
+            console.log("انتهى الوقت!");
+            stopTimer();
+            // (إنهاء الدور تلقائياً)
+            // (سنطبق الأكشن أولاً، كعقاب على التأخير)
+            applyCardAction(gameState.currentCard);
+            proceedToEndTurn();
+        }
+    }, 100);
+}
+
+function stopTimer() {
+    clearInterval(gameState.timerId);
+    gameState.timerId = null;
+}
+
+function updateTimerBar() {
+    const percentage = (gameState.timeLeft / gameState.timerDuration) * 100;
+    timerBar.style.width = `${percentage}%`;
+    
+    // (تغيير اللون للتحذير)
+    if (percentage < 25) {
+        timerBar.style.backgroundColor = 'var(--color-red)';
+    } else if (percentage < 60) {
+        timerBar.style.backgroundColor = 'var(--color-yellow)';
+    } else {
+        timerBar.style.backgroundColor = 'var(--color-green)';
+    }
+}
+
+function pauseGame() {
+    gameState.isPaused = true;
+    showScreen('pause');
+    // (المؤقت سيتوقف تلقائياً لأنه يتحقق من isPaused)
+}
+
+function resumeGame() {
+    gameState.isPaused = false;
+    showScreen('game');
+    // (المؤقت سيكمل تلقائياً)
+}
+
+function exitGame() {
+    stopTimer();
+    gameState.isPaused = false;
+    // (إعادة ضبط كل شيء والعودة للبداية)
+    gameState.playerCount = 2;
+    playerCountDisplay.textContent = '2';
+    currentTimerStep = 4; // 30 ثانية
+    timerSelectDisplay.textContent = '30';
+    gameState.timerDuration = 30;
+    showScreen('setup');
+}
+
+
+// --- 8. تشغيل اللعبة ---
 fetchQuestions().then(() => {
+    // إظهار شاشة الإعداد الافتراضية أولاً
+    // (ملاحظة: الكود القديم `showScreen('setup')` تم نقله إلى هنا)
+    timerSelectDisplay.textContent = timerSteps[currentTimerStep] === 0 ? '∞' : timerSteps[currentTimerStep];
     showScreen('setup'); 
 });
