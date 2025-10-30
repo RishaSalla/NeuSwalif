@@ -9,13 +9,14 @@
 <body>
 
     <div class="game-controls hidden" id="game-controls">
-        <button id="pause-btn" class="control-btn pixel-btn">||</button>
+        <button id="pause-btn" class="control-btn pixel-btn">⏸</button>
         <button id="exit-btn" class="control-btn pixel-btn red">X</button>
     </div>
 
     <div id="setup-screen" class="modal-screen active">
         <div class="modal-content pixel-box">
             <img src="assets/images/logo.png" alt="NEO Sawlif Logo" class="setup-logo">
+            
             <p>اختر عدد اللاعبين (2-6):</p>
             <div class="player-count-selector">
                 <button class="count-btn" id="decrement-players">-</button>
@@ -26,10 +27,10 @@
             <p>اختر مدة الدور (بالثواني):</p>
             <div class="player-count-selector">
                 <button class="count-btn" id="decrement-timer">-</button>
-                <span id="timer-select-display">30</span> 
+                <span id="timer-select-display">∞</span> 
                 <button class="count-btn" id="increment-timer">+</button>
             </div>
-            <p class="timer-note">(اختر 0 للعب بدون مؤقت)</p>
+            <p class="timer-note">(اختر ∞ للعب بدون مؤقت)</p>
 
             <button id="setup-next-btn" class="action-btn pixel-btn">التالي</button>
         </div>
@@ -41,6 +42,8 @@
             <div id="player-names-inputs">
                 </div>
             <button id="start-game-btn" class="action-btn pixel-btn green">إبدأ اللعبة</button>
+            
+            <button id="names-back-btn" class="action-btn pixel-btn" style="margin-top: 15px; background-color: var(--color-box-bg);">رجوع</button>
         </div>
     </div>
 
@@ -65,14 +68,17 @@
             </div>
         </div>
 
-        <button id="flip-card-btn" class="action-btn pixel-btn blue">اقلب الكرت</button>
-        <button id="end-turn-btn" class="action-btn pixel-btn yellow hidden">السؤال التالي</button>
-        
-        <div id="wild-color-picker" class="hidden">
-            <button class="action-btn pixel-btn wild-btn red" data-color="red"></button>
-            <button class="action-btn pixel-btn wild-btn blue" data-color="blue"></button>
-            <button class="action-btn pixel-btn wild-btn green" data-color="green"></button>
-            <button class="action-btn pixel-btn wild-btn yellow" data-color="yellow"></button>
+        <div id="game-action-wrapper">
+            <button id="flip-card-btn" class="action-btn pixel-btn blue">اقلب الكرت</button>
+            
+            <button id="end-turn-btn" class="action-btn pixel-btn yellow hidden">التالي</button>
+            
+            <div id="wild-color-picker" class="hidden">
+                <button class="action-btn pixel-btn wild-btn red" data-color="red"></button>
+                <button class="action-btn pixel-btn wild-btn blue" data-color="blue"></button>
+                <button class="action-btn pixel-btn wild-btn green" data-color="green"></button>
+                <button class="action-btn pixel-btn wild-btn yellow" data-color="yellow"></button>
+            </div>
         </div>
 
         <span id="deck-counter"></span> 
@@ -91,7 +97,7 @@
             <h2 class="modal-title">اللعبة متوقفة</h2>
             <p>اضغط "استئناف" للمتابعة.</p>
             <button id="resume-btn" class="action-btn pixel-btn green">استئناف</button>
-            </div>
+        </div>
     </div>
 
     <div id="exit-confirm-screen" class="modal-screen">
