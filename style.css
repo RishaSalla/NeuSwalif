@@ -20,7 +20,7 @@
     --img-back: url('assets/images/card-back.png'); 
     
     --img-bg-red: url('assets/images/bg-red.png');
-    --img-bg-blue: url('assets/images/bg-blue.png');
+    --img-bg-blue: url('assets://images/bg-blue.png');
     --img-bg-green: url('assets/images/bg-green.png');
     --img-bg-yellow: url('assets/images/bg-yellow.png');
     --img-bg-black: url('assets/images/bg-black.png');
@@ -30,7 +30,7 @@
     display: none !important;
 }
 
-/* (جديد!) خلفية تفاعلية (فضاء بكسلي) */
+/* خلفية تفاعلية (فضاء بكسلي) */
 @keyframes move-stars {
     from { background-position: 0 0; }
     to { background-position: 0 1000px; }
@@ -38,8 +38,7 @@
 
 body {
     font-family: var(--font-arabic);
-    background-color: #000; /* خلفية سوداء للفضاء */
-    /* صورة نجوم بكسلية صغيرة متكررة */
+    background-color: #000; 
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVQIW2NkYGD4z0A4+J8NAAjvA/1dYf8MAAAAAElFTkSuQmCC');
     animation: move-stars 60s linear infinite;
     
@@ -65,6 +64,7 @@ body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.9); 
     display: flex;
+    flex-direction: column; /* (تعديل!) للسماح بالتحكم بالتباعد */
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -76,7 +76,6 @@ body {
     z-index: 100;
 }
 
-/* شاشات التأكيد (z-index أعلى) */
 #pause-screen,
 #exit-confirm-screen,
 #elimination-screen {
@@ -104,10 +103,9 @@ body {
     margin-top: 0;
     margin-bottom: 25px;
     line-height: 1.4;
-    color: var(--color-yellow); /* تمييز العنوان باللون الأصفر */
+    color: var(--color-yellow); 
 }
 
-/* عنوان شاشة الإقصاء */
 #elimination-screen .modal-title {
     color: var(--color-red);
 }
@@ -132,7 +130,7 @@ p {
     border: 4px solid var(--color-border);
     box-shadow: 
         inset -4px -4px 0px 0px rgba(0,0,0,0.2), 
-        0 0 0 4px #000; /* (تعديل!) حد أسود ليناسب الخلفية */
+        0 0 0 4px #000; 
     border-radius: 8px;
     position: relative;
 }
@@ -150,6 +148,9 @@ p {
     text-decoration: none;
     display: inline-block;
     transition: transform 0.1s, box-shadow 0.1s;
+    /* (جديد!) توحيد العرض الأدنى للأزرار الرئيسية */
+    min-width: 220px; 
+    box-sizing: border-box;
 }
 
 .pixel-btn:hover {
@@ -201,6 +202,7 @@ p {
     color: var(--color-text);
     border-radius: 6px;
     cursor: pointer;
+    min-width: 0; /* إلغاء العرض الأدنى */
 }
 
 #player-names-inputs {
@@ -210,19 +212,24 @@ p {
     margin-bottom: 30px;
 }
 
+/* (جديد!) تصميم بكسلي لصناديق الإدخال */
 #player-names-inputs input {
     font-family: var(--font-arabic);
     font-size: 1.2rem;
     padding: 12px;
     text-align: center;
     border: 4px solid var(--color-border);
-    background: #FFF;
-    color: var(--color-bg);
+    background: var(--color-box-bg); /* خلفية داكنة */
+    color: var(--color-text); /* نص أبيض */
     border-radius: 6px;
+    box-shadow: inset -2px -2px 0px 0px rgba(0,0,0,0.2);
+}
+#player-names-inputs input::placeholder {
+    color: #AAA;
 }
 
 #game-screen {
-    justify-content: space-around; 
+    justify-content: center; /* (تعديل!) توسيط العناصر عمودياً */
     flex-direction: column;
 }
 
@@ -231,12 +238,13 @@ p {
 }
 
 #card-container {
-    flex-grow: 1;
+    /* (تعديل!) إزالة flex-grow للسماح بتوحيد مكان الزر */
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     perspective: 1000px;
+    margin-bottom: 20px; /* إضافة مسافة بين الكرت والأزرار */
 }
 
 
@@ -330,32 +338,40 @@ p {
 
 .card-front {
     transform: rotateY(180deg);
-    /* (جديد!) إصلاح "وميض" الكرت. سيتم إظهاره بالجافاسكربت */
     visibility: hidden; 
 }
 
-/* (جديد!) إظهار الكرت عند قلبه */
 #card-flipper.flipped .card-front {
     visibility: visible;
 }
 
-/* (تعديل!) إزالة الحدود البيضاء من ظهر الكرت */
 .card-back {
     background-image: var(--img-back);
     background-size: cover;
     background-position: center;
     border-radius: 16px; 
-    /* (تم حذف 'border' من هنا) */
+    /* (تعديل!) إزالة الحدود البيضاء */
 }
 
 /* --- 7. أزرار الوايلد --- */
+
+/* (جديد!) حاوية الأزرار الموحدة */
+#game-action-wrapper {
+    /* هذه الحاوية تضمن ثبات الارتفاع والمكان */
+    min-height: 80px; /* ارتفاع كافٍ لأكبر زر */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 110;
+    margin-top: -15px; 
+}
+
 #wild-color-picker {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-top: -15px; 
-    z-index: 110; 
-    position: relative;
+    /* (تعديل!) الأزرار الآن داخل الحاوية الموحدة */
 }
 
 .wild-btn {
@@ -364,6 +380,7 @@ p {
     padding: 0;
     font-size: 0;
     border-width: 3px;
+    min-width: 0; /* إلغاء العرض الأدنى */
 }
 
 .wild-btn.red { background-color: var(--color-red); }
@@ -388,6 +405,10 @@ p {
     height: 50px;
     font-size: 1.5rem;
     padding: 0;
+    min-width: 0; /* إلغاء العرض الأدنى */
+    /* (جديد!) تعديل الخط ليناسب الأيقونة */
+    font-family: system-ui, sans-serif;
+    line-height: 1; 
 }
 
 #timer-container {
@@ -397,13 +418,11 @@ p {
     background: var(--color-box-bg);
     border: 3px solid var(--color-border);
     border-radius: 4px;
-    margin: 10px auto;
+    margin: 10px auto 0; /* (تعديل!) تقليل المسافة السفلية */
     z-index: 110;
     position: relative;
-    /* (جديد!) إخفاؤه افتراضياً */
     visibility: hidden; 
 }
-/* (جديد!) إظهاره عند بدء المؤقت */
 #timer-container.active {
     visibility: visible;
 }
