@@ -16,8 +16,6 @@
     <div id="setup-screen" class="modal-screen active">
         <div class="modal-content pixel-box">
             <img src="assets/images/logo.png" alt="NEO Sawlif Logo" class="setup-logo">
-            <h2 class="modal-title">NEO Sawlif</h2>
-            
             <p>اختر عدد اللاعبين (2-6):</p>
             <div class="player-count-selector">
                 <button class="count-btn" id="decrement-players">-</button>
@@ -28,7 +26,8 @@
             <p>اختر مدة الدور (بالثواني):</p>
             <div class="player-count-selector">
                 <button class="count-btn" id="decrement-timer">-</button>
-                <span id="timer-select-display">30</span> <button class="count-btn" id="increment-timer">+</button>
+                <span id="timer-select-display">30</span> 
+                <button class="count-btn" id="increment-timer">+</button>
             </div>
             <p class="timer-note">(اختر 0 للعب بدون مؤقت)</p>
 
@@ -48,7 +47,7 @@
     <div id="pass-device-screen" class="modal-screen">
         <div class="modal-content pixel-box">
             <h2 class="modal-title" id="pass-device-title">الدور على: [اسم اللاعب]</h2>
-            <p>مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز"!</p>
+            <p id="pass-device-message">مرر الجهاز للاعب التالي، ثم اضغط "أنا جاهز"!</p>
             <button id="show-card-btn" class="action-btn pixel-btn green">أنا جاهز</button>
         </div>
     </div>
@@ -92,7 +91,23 @@
             <h2 class="modal-title">اللعبة متوقفة</h2>
             <p>اضغط "استئناف" للمتابعة.</p>
             <button id="resume-btn" class="action-btn pixel-btn green">استئناف</button>
-            <button id="exit-game-confirm-btn" class="action-btn pixel-btn red" style="margin-top: 15px;">إنهاء اللعبة</button>
+            </div>
+    </div>
+
+    <div id="exit-confirm-screen" class="modal-screen">
+        <div class="modal-content pixel-box">
+            <h2 class="modal-title">إنهاء اللعبة</h2>
+            <p>هل أنت متأكد أنك تريد إنهاء اللعبة والعودة للقائمة الرئيسية؟</p>
+            <button id="exit-confirm-yes-btn" class="action-btn pixel-btn red">نعم، إنهاء</button>
+            <button id="exit-confirm-no-btn" class="action-btn pixel-btn" style="margin-top: 15px;">لا، إلغاء</button>
+        </div>
+    </div>
+    
+    <div id="elimination-screen" class="modal-screen">
+        <div class="modal-content pixel-box">
+            <h2 class="modal-title">💣 بوووم! 💣</h2>
+            <p id="elimination-message">تم إقصاء اللاعب [اسم اللاعب]!</p>
+            <button id="elimination-ok-btn" class="action-btn pixel-btn yellow">متابعة</button>
         </div>
     </div>
 
